@@ -42,9 +42,18 @@ return.annualized.df <- as.data.frame(return.annualized.zoo)
 
 # Multiperiod binomial model
 weekly_sd <- sd(returns.weekly.zoo)
+stock_price <- prices.df[nrow(prices.df), ]
 
+multiperiodBinomialFunction <- function(periods, iterations, weekly_sd_cc) {
+  u <- exp(weekly_sd_cc)
+  d <- 1 / u
+  
+  q = ()
+  
+  
+}
 
-
+multiperiodBinomialFunction(52, 10000, weekly_sd)
 
 
 # Black and Sholes model
