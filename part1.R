@@ -34,6 +34,18 @@ prices.df <- as.data.frame(prices.zoo) %>%
   na.omit() %>%
   select(contains("Adjusted"))
 
-returns.df.weekly <- as.data.frame(diff(log(as.zoo(prices.df))))
+returns.weekly.zoo <- diff(log(as.zoo(prices.df)))
+returns.weekly.df = as.data.frame(returns.weekly.zoo)
 
-return.annualized <- as.data.frame(((returns.df.weekly + 1) ** 52) - 1)
+return.annualized.zoo <- ((returns.weekly.zoo + 1) ** 52) - 1
+return.annualized.df <- as.data.frame(return.annualized.zoo)
+
+# Multiperiod binomial model
+weekly_sd <- sd(returns.weekly.zoo)
+
+
+
+
+
+# Black and Sholes model
+annual_sd <- sd(return.annualized.zoo)
