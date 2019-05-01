@@ -55,7 +55,7 @@ rm(rfrate.obj)
 
 rfrate.df <- rfrate.zoo[index(rfrate.zoo) >= as.Date("2018-01-01") & index(rfrate.zoo) <= as.Date("2018-12-01")]
 
-risk_free_rate <- sum(rfrate.df)/100/52 
+risk_free_rate <- mean(rfrate.df)/100
 
 
 
@@ -81,14 +81,35 @@ stock_price <- prices.df[nrow(prices.df), ]
 strike_price = 40
 
 
-black_sholes_model_call = function(stock_price, strike_price, annual_risk_free, expiration_date, std_dev) {
-  #
-  d1 = (log(stock_price/strike_price) + (annual_risk_free + ((std_dev ** 2 )/ 2) ) * expiration_date) / (std_dev * sqrt(expiration_date))
+black_sholes_model_call = function(S, K, r, t, sd) {
+  aux1 = log(S / K)
+  aux2 = (r + ((sd ** 2)/2) ) * t
+  aux3 = sd * sqrt(t)
+  d1 = (aux1 + aux2) / aux3
+  d2 = d1 - (sd * sqrt(t))
   
-  d2 = d1 - std_dev * sqrt(expiration_date)
+  C = S * pnorm(d1) - K * exp(-1 * r * t) * pnorm(d2)
   
-  C = stock_price * dnorm(d1,mean=0,sd=1) - strike_price * 
+  return(C)
   
 }
 
-lel = black_sholes_model_call(stock_price, strike_price, risk_free_rate, 1, annual_sd)
+call = black_sholes_model_call(stock_price, strike_price, risk_free_rate, 1, annual_sd)
+
+
+black_sholes_model_put = function(S, K, r, t, sd) {
+  aux1 = log(S / K)
+  aux2 = (r + ((sd ** 2)/2) ) * t
+  aux3 = sd * sqrt(t)
+  d1 = (aux1 + aux2) / aux3
+  d2 = d1 - (sd * sqrt(t))
+  
+  P = K * exp(-1 * r * t) * pnorm(-d2) - S * pnorm(-d1)
+  
+  return(P)
+  
+}
+
+
+put = black_sholes_model_put(stock_price, strike_price, risk_free_rate, 1, annual_sd)
+
