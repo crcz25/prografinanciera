@@ -59,15 +59,6 @@ risk_free_rate <- exp(mean(log(rfrate.df / 100))) # geometric mean of annualized
 weekly_sd <- sd(returns.weekly.zoo)
 stock_price <- prices.df[nrow(prices.df), ]
 
-
-applyPeriod <- function(s, q, u, d) {
-  if(runif(1) < q) {
-    return(s * u)
-  } else {
-    return(s * d)
-  }
-}
-
 multiperiodBinomialFunction <- function(periods, iterations, stock_price, weekly_sd_cc, risk_free, strike_price) {
   u <- exp(weekly_sd_cc)
   d <- 1 / u
