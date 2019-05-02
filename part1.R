@@ -77,40 +77,19 @@ multiperiodBinomialFunction <- function(periods, iterations, stock_price, weekly
   
   S <- rep(stock_price, iterations)
   
-  for(i in 1:periods) {
-    S <- sapply(S, applyPeriod, q = q, u = u, d = d, simplify = "array")
+  for(i in 1:iterations) {
+    for(rb in rbinom(periods, 1, q)) {
+      S[i] <- S[i] * ifelse(rb == 1, u, d)
+    }
   }
   
-  s_mean <- mean(S)
-  s_sd <- sd(S)
+  call_values <- S - strike_price
+  call_values[call_values < 0] <- 0
+  mean_call_value <- mean(call_values)
   
-  u52 <- u ** periods
-  d52 <- d ** periods
-  r52 <- r ** periods
-  print(u)
-  print(d)
-  print("J")
-  print(u52)
-  print(d52)
-  print(r52)
-  
-  Su <- (stock_price * u52)
-  Sd <- (stock_price * d52)
-  
-  Cu <- max(Su -  strike_price, 0)
-  Cd <- max(Sd -  strike_price, 0)
-  
-  B0 <- (u52 * Cd - d52 * Cu) / (r52 * (u52 - d52))
-  N <- (Cu - Cd) / (Su - Sd)
-  P0 <- B0 + N * stock_price
-  
-  print(Su)
-  print(Sd)
-  print(Cu)
-  print(Cd)
-  print(B0)
-  print(N)
-  print(P0)
+  print(mean(S))
+  print(mean_call_value)
+  print(mean_call_value / (r ** periods))
   
 }
 
