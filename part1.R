@@ -82,10 +82,8 @@ strike_price = 40
 
 
 black_sholes_model_call = function(S, K, r, t, sd) {
-  aux1 = log(S / K)
-  aux2 = (r + ((sd ** 2)/2) ) * t
-  aux3 = sd * sqrt(t)
-  d1 = (aux1 + aux2) / aux3
+
+  d1 = (log(S / K) + ((r + ((sd ** 2)/2) ) * t)) / (sd * sqrt(t))
   d2 = d1 - (sd * sqrt(t))
   
   C = S * pnorm(d1) - K * exp(-1 * r * t) * pnorm(d2)
@@ -98,10 +96,7 @@ call = black_sholes_model_call(stock_price, strike_price, risk_free_rate, 1, ann
 
 
 black_sholes_model_put = function(S, K, r, t, sd) {
-  aux1 = log(S / K)
-  aux2 = (r + ((sd ** 2)/2) ) * t
-  aux3 = sd * sqrt(t)
-  d1 = (aux1 + aux2) / aux3
+  d1 = (log(S / K) + ((r + ((sd ** 2)/2) ) * t)) / (sd * sqrt(t))
   d2 = d1 - (sd * sqrt(t))
   
   P = K * exp(-1 * r * t) * pnorm(-d2) - S * pnorm(-d1)
