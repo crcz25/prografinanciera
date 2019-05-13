@@ -59,7 +59,7 @@ risk_free_rate <- exp(mean(log(rfrate.df / 100))) # geometric mean of annualized
 weekly_sd <- sd(returns.weekly.zoo)
 stock_price <- prices.df[nrow(prices.df), ]
 
-multiperiodBinomialFunction <- function(periods, iterations, stock_price, weekly_sd_cc, risk_free, strike_price) {
+multiperiodBinomialFunction <- function(periods, iterations, stock_price, weekly_sd_cc, risk_free, strike_price, type = "call") {
   u <- exp(weekly_sd_cc)
   d <- 1 / u
   r <- (1 + risk_free)
@@ -74,19 +74,23 @@ multiperiodBinomialFunction <- function(periods, iterations, stock_price, weekly
     }
   }
   
-  call_values <- S - strike_price
+  if(type == "call") {
+    call_values <- S - strike_price
+  } else {
+    call_values <- strike_price - S
+  }  
   call_values[call_values < 0] <- 0
   mean_call_value <- mean(call_values)
   
-  print(mean(S))
-  print(mean_call_value)
-  print(mean_call_value / (r ** periods))
+  return(mean_call_value / (r ** periods))
   
 }
 
 strike_price = 40
 
-multiperiodBinomialFunction(52, 10000, stock_price, weekly_sd, risk_free_rate/52, strike_price) 
+multiperiodBinomialFunction(52, 10000, stock_price, weekly_sd, risk_free_rate/52, strike_price, "call") 
+
+multiperiodBinomialFunction(52, 10000, stock_price, weekly_sd, risk_free_rate/52, strike_price, "put") 
 
 # Black and Sholes model
 
