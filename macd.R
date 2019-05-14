@@ -3,6 +3,7 @@ require(quantmod)
 library(dplyr)
 library(ggplot2)
 library(tibble)
+library(ggplot2)
 
 from = "2018-10-01"
 
@@ -97,205 +98,58 @@ for (row in seq(1, nrow(signal) - 1)) {
   }
 }
 
+macd$macdOsc <- macd$macd - macd$signal
+macd$macdOsc[is.na(macd$macdOsc)] <- 0
+
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+p1 <- ggplot(Cl(prices.zoo), aes(Index, IBM.Close)) + 
+  geom_line()
+p2 <- ggplot(macd[, c("macd", "signal")], aes(Index)) + 
+  geom_line(aes(y = macd, colour="macd")) + 
+  geom_line(aes(y = signal, colour="signal"))
+p3 <-ggplot(data=macd$macdOsc, aes(x=Index, y=macdOsc)) +
+  geom_bar(stat="identity")
+
+p4 <- ggplot(rsi, aes(Index)) + 
+  geom_line(aes(y = rsi)) +
+  geom_point(data=rsi[20], aes(y = rsi, size=10), color="green", shape=24, fill="green") +
+  annotate("rect", xmin=index(rsi)[1], xmax=index(rsi)[length(index(rsi))], ymin=30, ymax=70, alpha=0.2, fill="blue") +
+  theme(legend.position = "none")
 
 
-
-
-
-
-# lel <- merge(Cl(prices.zoo), macd)
-# lel$macdOsc <- lel$macd - lel$signal
-# 
-# lel = as.data.frame(lel)
-# 
-# #buy = 1 sell = 0
-# # Check if the
-# lel$Bullish_Bearish_Crossover = ifelse((lel$macd > lel$signal), 1, 0)
-# 
-# # Upside momentum is increasing
-# lel$Bullish_Bearish_Centerline_Crossover = ifelse((lel$macd > 0), 1, 0)
-# 
-# 
-# plot(lel$macd)
-# lines(lel$signal, col = "blue")
-# lines(lel$macdOsc, col = "red")
-# 
-# 
-# 
-# rsi = as.data.frame(RSI(Cl(prices.zoo)))
-# 
-# 
-# #polygon(cbind(c(min(index(lel)), index(lel), max(index(lel))), c(min(lel$macd), lel$macd, min(lel$macd))), col="#00CC66")
-# 
-# 
-# 
-# 
-# 
-# get_higher_lows <- function(data) {
-#   days_to_acum <- 5
-#   
-#   differences <- diff(data)
-#   sd_data <- sd(data)
-#   
-#   
-#   past <- rep(NA, length(differences))
-#   for (i in days_to_acum:length(differences)) {
-#     past[i] <- mean(differences[i:(i - days_to_acum + 1)])
-#   }
-#   print(past)
-#   
-#   future <- rep(NA, length(differences))
-#   for (i in (length(differences) - days_to_acum + 1):1) {
-#     future[i] <- mean(differences[i:(i + days_to_acum - 1)])
-#   }
-#   print(future)
-#   
-#   threshold <-  (sd_data * 0.01)
-#   
-#   higher_lows <- c()
-#   for (i in days_to_acum:(length(differences) - days_to_acum + 1)) {
-#     v <- min(-past[i], future[i])
-#     print(paste(i, v))
-#     
-#     if (data[i] >= data[i + 1] &&
-#         data[i + 1] <= data[i + 2] && v > threshold) {
-#       print(paste(i, past[i], future[i]))
-#       higher_lows <- c(higher_lows, i + 1)
-#     }
-#   }
-#   
-#   
-#   return(higher_lows)
-# }
-# 
-# higher_lows <- get_higher_lows(na.omit(lel$macd))
-# 
-# 
-# higher_lows <- get_higher_lows(lel$IBM.Close)
-# 
-# 
-# points(higher_lows, lel$IBM.Close[higher_lows], pch = 19, col = "red")
-# 
-# points(higher_lows, lel$macd[higher_lows], pch = 19, col = "blue")
-# 
-# 
-# chartSeries(IBM)
-# addMACD(
-#   fast = 12,
-#   slow = 26,
-#   signal = 9,
-#   type = "EMA",
-#   histogram = TRUE
-# )
-# 
-# 
-# #Simulacion
-# initial = asu = 10000
-# n = 0
-# val = 0
-# 
-# cat("Inicial" , initial)
-# 
-# cat("Acciones", n)
-# 
-# #buy = 1 sell = 0
-# for (row in seq(1, nrow(lel) - 1)) {
-#   data = lel[row,]
-#   nxt = lel[row + 1,]
-#   
-#   if (is.na(data$Bullish_Bearish_Crossover) &
-#       !is.na(nxt$Bullish_Bearish_Crossover) &
-#       nxt$Bullish_Bearish_Crossover == 1) {
-#     print("Comprar")
-#     
-#     acciones = floor(initial / nxt$IBM.Close)
-#     
-#     n = n + acciones
-#     
-#     
-#     initial = initial - (acciones * nxt$IBM.Close)
-#     
-#     cat("Acciones", acciones, "\n")
-#     cat("Dinero", initial, "\n")
-#     cat("Val", (acciones * nxt$IBM.Close) + initial, "\n")
-#   }
-#   
-#   if (!is.na(data$Bullish_Bearish_Crossover) &
-#       data$Bullish_Bearish_Crossover == 0 &
-#       nxt$Bullish_Bearish_Crossover == 1) {
-#     print('Comprar')
-#     acciones = as.numeric(floor(initial / nxt$IBM.Close))
-#     
-#     n = n + acciones
-#     
-#     initial = initial - (acciones * nxt$IBM.Close)
-#     
-#     cat("Acciones", acciones, "\n")
-#     cat("Dinero", initial, "\n")
-#     cat("Val", (acciones * nxt$IBM.Close) + initial, "\n")
-#   }
-#   
-#   if (!is.na(data$Bullish_Bearish_Crossover) &
-#       data$Bullish_Bearish_Crossover == 1 &
-#       nxt$Bullish_Bearish_Crossover == 0) {
-#     print('Vender')
-#     acciones = n * nxt$IBM.Close
-#     
-#     cat("Acciones", n, "\n")
-#     cat("Dinero", initial, "\n")
-#     initial = initial + acciones
-#     val = initial
-#     cat("Val",  initial, "\n")
-#     n = 0
-#   }
-#   
-# }
-# 
-# print(n)
-# print(initial)
-# print(val / asu)
-# 
-# 
-# 
-# # RSI
-# # Calculate RSI
-# initial = asu = 10000
-# n = 0
-# val = 0
-# 
-# 
-# rsi = as.data.frame(rsi)
-# 
-# #rsi$Action = ifelse((rsi$rsi > 70), "Overbought - Sell", ifelse((rsi$rsi < 30), "Oversold - Buy", NA))
-# 
-# 
-# rsi <- rsi %>% rownames_to_column("date")
-# 
-# 
-# state = 1
-# for (row in seq(1, nrow(rsi) - 1)) {
-#   data = rsi[row, ]
-#   nxt = rsi[row + 1, ]
-#   
-#   
-#   if (!is.na(data)) {
-#     if (data$rsi > 70 & nxt$rsi < 70) {
-#       print("Vender")
-#       print(data)
-#       print(nxt)
-#       
-#       price = Cl(prices.zoo)[data$date]
-#       
-#       state = 0
-#     }
-#     if (data$rsi < 30 & nxt$rsi > 30) {
-#       print("comprar")
-#       print(data)
-#       print(nxt)
-#       
-#       price = Cl(prices.zoo)[data$date]
-#       
-#       state = 1
-#     }
-#   }
-# }
+multiplot(p1, p2, p3, p4, cols=1)
