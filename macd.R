@@ -5,14 +5,10 @@ library(ggplot2)
 library(tibble)
 library(ggplot2)
 
-from = "2018-10-01"
-
+from = "2018-01-01"
 to = "2019-05-08"
-
-ticker = "IBM"
-
+ticker = "BTCUSD=X"
 periodicity = "daily"
-
 
 try(getSymbols(
   ticker,
@@ -25,9 +21,10 @@ try(getSymbols(
 objList <- lapply(ticker, get)
 
 prices.zoo <- do.call(merge, objList)
+closed = Cl(prices.zoo)
+names(closed) = "Close"
 
 EMA(Cl(prices.zoo), n = 12)
-
 EMA(Cl(prices.zoo), n = 26)
 
 macd = MACD(
@@ -42,61 +39,142 @@ macd = MACD(
 rsi <- RSI(Cl(prices.zoo))
 
 
-signal <-
-  ifelse ((macd$signal > macd$macd) & (rsi$rsi > 70), 1,
-          ifelse((macd$signal < macd$macd) & (rsi$rsi < 30), -1, 0))
+signal <- closed 
+signal[,] <- 0 # Bullish = 1, neutral = 0, Bearish = -1
 
-# Replace na to zeros
-signal[is.na(signal)] <- 0
+back_days <- 5
 
-signal = as.data.frame(signal)
+low_threshold <- 30
+high_threshold <- 70
 
-signal <- signal %>% rownames_to_column("date")
+rsi_actives <- c()
+
+for(i in (back_days + 1):length(signal)) {
+  
+  out <- tryCatch(
+    {
+      idx <- index(signal[i])
+      idx_past <- index(signal[i - back_days])
+      
+      # Signal 1
+      not_cur_na <- !is.na(macd$macd[idx]) && !is.na(rsi[idx]) && !is.na(macd$signal[idx])
+      not_past_na <- !is.na(macd$macd[idx_past]) && !is.na(rsi[idx_past]) && !is.na(macd$signal[idx_past])
+      if(not_cur_na && not_past_na) {
+        # Bullish signal
+        rsi_subset <- rsi[paste(idx_past, "/", idx, sep = "")]
+        
+        crosses_rsi <- FALSE
+        for(j in 2:length(rsi_subset)) {
+          if(rsi_subset[j] >= low_threshold && rsi_subset[j - 1] < low_threshold) {
+            crosses_rsi <- TRUE
+          }
+        }
+        
+        macd_subset <- macd[paste(idx_past, "/", idx, sep = "")]
+        
+        crosses_macd <- FALSE
+        for(j in 2:length(macd_subset$macd)) {
+          if(macd_subset[j, "macd"] >= macd_subset[j, "signal"] && macd_subset[j - 1, "macd"] < macd_subset[j - 1, "signal"]) {
+            crosses_macd = TRUE
+          }
+        }
+        
+        previous_day = index(macd_subset)[length(macd_subset$macd) - 1]
+        if(crosses_rsi && macd[idx, "macd"] >= macd[idx, "signal"] && macd[previous_day, "macd"] <  macd[previous_day, "signal"]) {
+          signal[idx] <- 1
+        }
+
+        if(crosses_macd && rsi[idx] >= low_threshold && rsi[previous_day] < low_threshold) {
+          signal[idx] <- 1
+        }
+        
+        
+        # Bearish
+        crosses_rsi <- FALSE
+        for(j in 2:length(rsi_subset)) {
+          if(rsi_subset[j] <= high_threshold && rsi_subset[j - 1] > high_threshold) {
+            crosses_rsi <- TRUE
+          }
+        }
+        
+        crosses_macd <- FALSE
+        for(j in 2:length(macd_subset$macd)) {
+          if(macd_subset[j, "macd"] <= macd_subset[j, "signal"] && macd_subset[j - 1, "macd"] > macd_subset[j - 1, "signal"]) {
+            crosses_macd = TRUE
+          }
+        }
+        
+        previous_day = index(macd_subset)[length(macd_subset$macd) - 1]
+        if(crosses_rsi && macd[idx, "macd"] <= macd[idx, "signal"] && macd[previous_day, "macd"] > macd[previous_day, "signal"]) {
+          signal[idx] <- -1
+        }
+        
+        if(crosses_macd && rsi[idx] <= high_threshold && rsi[previous_day] > high_threshold) {
+          signal[idx] <- -1
+        }
+        
+        
+      }
+    },
+    error=function(cond) {
+      print(cond)
+    })
+}
+
+
 
 #Simulacion
 
-initial = asu = 10000
-n = 0
-val = 0
-state = -1
+initial_chash <- cash <- 10000
+stocks <- 0
 
-for (row in seq(1, nrow(signal) - 1)) {
-  data = signal[row,]
-  nxt = signal[row + 1, ]
+
+for (row in 1:length(signal)) {
+  s = signal[row]
   
-  #print(data$signal)
-  
-  if (data$signal == -1 & state == -1) {
+  if (s == 1) {
     print("Comprar")
-    price = Cl(prices.zoo)[data$date]
-    acciones = floor(initial / price)
+    price = as.numeric(Cl(prices.zoo)[row])
+    number_of_stocks = floor(cash / price)
     
-    initial = initial - (acciones * price)
+    if(number_of_stocks > 0) {
     
-    n = n + acciones
-    
-    cat("Acciones", acciones, "\n")
-    cat("initial", initial, "\n")
-    cat("val", initial + (acciones * price), "\n")
-    state = 1
-    print(data$date)
-  }
-  if (state == 1 & data$signal == 1) {
+      cash = cash - (number_of_stocks * price)
+      stocks = stocks + number_of_stocks
+      
+      cat("Price", price, "\n")
+      cat("Bought stocks", number_of_stocks, "\n")
+      cat("cash", cash, "\n")
+      cat("Number of owned stocks", stocks, "\n")
+    } else {
+      print("No money to buy stocks :C")
+    }
+  } else if (s == -1) {
     print("Vender")
-    price = Cl(prices.zoo)[data$date]
-    acciones = floor(initial / price)
     
-    initial = initial + acciones
-    
-    cat("Acciones", acciones, "\n")
-    cat("initial", initial, "\n")
-    cat("val", initial + (acciones * price), "\n")
-    
-    n = 0
-    state = -1
-    print(data$date)
+    if(stocks > 0) {
+      price = as.numeric(Cl(prices.zoo)[row])
+      past_stocks <- stocks
+
+      print(price)
+      print(stocks)
+      cash = cash + stocks * price
+      stocks <- 0
+      
+      cat("Price", price, "\n")
+      cat("Sold stocks", past_stocks, "\n")
+      cat("Cash", cash, "\n")
+      cat("Number of owned stocks", stocks, "\n")
+    } else {
+      print("No stocks to sell")
+    }
+
   }
 }
+
+total <- cash + as.numeric(Cl(tail(prices.zoo, 1))) * stocks
+cat("Final money", total, "\n")
+cat("Return", (total / initial_chash) - 1, "\n")
 
 macd$macdOsc <- macd$macd - macd$signal
 macd$macdOsc[is.na(macd$macdOsc)] <- 0
@@ -137,19 +215,42 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   }
 }
 
-p1 <- ggplot(Cl(prices.zoo), aes(Index, IBM.Close)) + 
+buy_signals <- index(signal[signal == 1])
+sell_signals <- index(signal[signal == -1])
+
+p1 <- ggplot(Cl(closed), aes(Index, Close)) + 
   geom_line()
+
 p2 <- ggplot(macd[, c("macd", "signal")], aes(Index)) + 
-  geom_line(aes(y = macd, colour="macd")) + 
-  geom_line(aes(y = signal, colour="signal"))
+  geom_line(aes(y = macd, colour="macd"), color="black") + 
+  geom_line(aes(y = signal, colour="signal"), color="red") +
+  #geom_point(data=macd$macd[as.Date(rsi_actives),], aes(y = macd, size=10), color="yellow", shape=24) +
+  theme(legend.position = "none")
+
+if(length(buy_signals) > 0) {
+  p2 <- p2 + geom_point(data=macd$macd[buy_signals,], aes(y = macd, size=5), color="green", shape=24)
+}
+
+if(length(sell_signals) > 0) {
+  p2 <- p2 + geom_point(data=macd$macd[sell_signals,], aes(y = macd, size=5), color="red", shape=25)
+
+}
+
 p3 <-ggplot(data=macd$macdOsc, aes(x=Index, y=macdOsc)) +
   geom_bar(stat="identity")
 
 p4 <- ggplot(rsi, aes(Index)) + 
   geom_line(aes(y = rsi)) +
-  geom_point(data=rsi[20], aes(y = rsi, size=10), color="green", shape=24, fill="green") +
   annotate("rect", xmin=index(rsi)[1], xmax=index(rsi)[length(index(rsi))], ymin=30, ymax=70, alpha=0.2, fill="blue") +
   theme(legend.position = "none")
 
+if(length(buy_signals) > 0) {
+  p4 <- p4 + geom_point(data=rsi[buy_signals,], aes(y = rsi, size=5), color="green", shape=24)
+}
+
+if(length(sell_signals) > 0) {
+  p4 <- p4 + geom_point(data=rsi[sell_signals,], aes(y = rsi, size=5), color="red", shape=25)
+  
+}
 
 multiplot(p1, p2, p3, p4, cols=1)
